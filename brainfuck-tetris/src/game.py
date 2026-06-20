@@ -10,7 +10,10 @@ runtime subsystem (scan-to-anchor, relative peeks, '[<]' resync) sound:
 LEFT_SENT is the only 0 to the left of the well, every live well cell is >= 1.
 """
 
-from src.dsl import Compiler, copy, set_const, emit_str, switch_cascade
+from src.dsl import (
+    Compiler, copy, set_const, emit_str, switch_cascade, eq, if_then_consume,
+    inc, clear, is_zero,
+)
 
 # ----------------------------------------------------------------------------
 # Board / encoding constants
@@ -47,6 +50,15 @@ REGION_SPEC = [
     ("ansi_scratch", 2), ("print_scratch", 10),
     ("asm_depth", 1), ("asm_buf", 256),
     ("LEFT_SENT", 1), ("well", WELL_CELLS), ("RIGHT_SENT", 1),
+    # The moving-piece subsystem's relative scratch/shadow bank rides at
+    # anchor + ~804..819. For an anchor anywhere in the well that maps to
+    # absolute well_base+804 .. well_base+1618, which MUST be dead, unused tape
+    # -- otherwise it clobbers whatever is allocated next (registers!), e.g. the
+    # shadow of a piece at (8,0) lands on the loop scratch cells. This pad
+    # reserves that whole strip immediately after the well so nothing else is
+    # placed there. Keep it the LAST core region: everything allocated afterward
+    # (driver + loop cells) then sits safely beyond the scratch reach.
+    ("SCRATCH_PAD", WELL_CELLS + 64),
 ]
 
 
@@ -166,19 +178,36 @@ def init_well(c):
     return c
 
 
-def _glyph_body(c, byte):
-    # zero-arg closure (matches this dsl's switch_cascade/if_then_consume convention)
-    def body():
-        set_const(c, "ansi_scratch", byte)
-        c.goto("ansi_scratch"); c.emit(".")
-    return body
-
-
 def _emit_render_cell(c, abs_cell):
-    # tmp0=value(copy); cascade scratch g=tmp2, m=tmp3, t=tmp1; glyph via ansi_scratch
-    copy(c, abs_cell, "tmp0", "tmp1")
-    bodies = [(k, _glyph_body(c, GLYPH_BF[k])) for k in range(1, 11)]
-    switch_cascade(c, "tmp0", bodies, "tmp2", "tmp3", "tmp1")
+    """Output one cell's glyph, cheaply. The glyph keys are exactly the
+    contiguous values 1..10, so an early-stopping decrement cascade is both
+    correct and fast: `work` is consumed at the match, so later candidates do
+    no work (an empty cell, value 1, costs one pass). This avoids both the
+    is_zero-on-wrapped-difference trap and running all 10 comparisons per cell.
+
+    Non-destructive on the well cell. work=tmp0, g=tmp2, m=tmp3, t=tmp1."""
+    copy(c, abs_cell, "tmp0", "tmp1")          # tmp0 = work = well[cell]
+    clear(c, "ansi_scratch")
+    for v, byte in GLYPH_BF.items():           # v = 1..10 (contiguous)
+        set_const(c, "tmp2", 0)
+        clear(c, "tmp1")
+        c.goto("tmp0"); c.emit("[")            # g=work, t=work, work=0
+        c.goto("tmp2"); c.emit("+")
+        c.goto("tmp1"); c.emit("+")
+        c.goto("tmp0"); c.emit("-]")
+        c.goto("tmp1"); c.emit("[")            # restore work; t=0
+        c.goto("tmp0"); c.emit("+")
+        c.goto("tmp1"); c.emit("-]")
+        c.goto("tmp2"); c.emit("[")            # if work != 0 (not yet matched):
+        c.goto("tmp2"); c.emit("[-]")
+        c.goto("tmp0"); c.emit("-")            #   work -= 1
+        is_zero(c, "tmp0", "tmp3", "tmp1")     #   m = (work == 0) -> this value matched
+        if_then_consume(c, "tmp3", lambda byte=byte: inc(c, "ansi_scratch", byte))
+        c.goto("tmp2"); c.emit("]")
+        c.goto("tmp2")
+    c.goto("ansi_scratch")
+    c.emit(".")
+    clear(c, "ansi_scratch")
     return c
 
 

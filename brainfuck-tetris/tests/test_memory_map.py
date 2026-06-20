@@ -20,6 +20,7 @@ EXPECTED = [
     ("ansi_scratch", 2), ("print_scratch", 10),
     ("asm_depth", 1), ("asm_buf", 256),
     ("LEFT_SENT", 1), ("well", WELL_CELLS), ("RIGHT_SENT", 1),
+    ("SCRATCH_PAD", WELL_CELLS + 64),
 ]
 
 

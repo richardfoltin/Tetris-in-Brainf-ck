@@ -21,7 +21,7 @@ POINTER MODEL (unchanged from reference)
 
 from src.dsl import Compiler
 from src.game import (
-    W, H, EMPTY, ACTIVE, ANCHOR, LOCKED, cell, make_empty_well,
+    W, H, WELL_CELLS, EMPTY, ACTIVE, ANCHOR, LOCKED, cell, make_empty_well,
 )
 
 # ---------------------------------------------------------------------------
@@ -94,7 +94,18 @@ def occupied_cells(piece, rot, px, py):
 # Ported from tetris.py. All offsets >= 4*W (dy>=4) so they are never footprint
 # cells; valid tape; restored to 0 after use (except shadow cells, which persist)
 # ---------------------------------------------------------------------------
-TB = 3 * W + 4    # 64: first local offset that can never be a footprint cell
+# The relative scratch/shadow bank rides INSIDE the contiguous well at a fixed
+# offset from the anchor. It MUST land past the well end for EVERY anchor
+# position, otherwise its transient cells (and the [-] cleanup, which zeroes to 0
+# not EMPTY) corrupt live playfield cells -- including planting phantom 9/10
+# markers and internal zeros that break the '[<]' resync. The farthest an anchor
+# can sit from the well end is WELL_CELLS-1 (anchor at (0,0)); an offset >=
+# WELL_CELLS therefore guarantees the whole bank lands in unallocated tape to the
+# right of RIGHT_SENT, no matter where the piece is. The optimized host VM
+# collapses the long '>'/'<' runs into single moves, so this stays cheap at run
+# time (only the generated .bf is larger). Footprint offsets (dy*W+dx, max 63)
+# stay small and in-well, as required.
+TB = WELL_CELLS + 4    # 804: first scratch offset, always past the well end
 ACC = TB + 4
 SH_PX = TB + 5
 SH_PY = TB + 6
@@ -325,7 +336,10 @@ def emit_try_move(c, piece, rot, nrot, mdx, mdy):
 # D) LOCK & SPAWN. Pre: cursor at LEFT_SENT. Converts the active piece to locked
 # id 'piece' and spawns a NEW piece at (spawn_x, spawn_y).
 # ---------------------------------------------------------------------------
-def emit_lock_and_spawn(c, piece, rot, new_piece, spawn_x, spawn_y):
+def emit_lock_only(c, piece, rot):
+    """Convert the active piece (compile-time piece,rot) into LOCKED(piece) cells
+    and clear its shadow. Pre: cursor known. Post: cursor at LEFT_SENT. After
+    this the well has NO anchor (no value 10) until a spawn runs."""
     well = c.addr("well")
     old_rel = footprint(piece, rot)
     c.goto(well)
@@ -336,6 +350,12 @@ def emit_lock_and_spawn(c, piece, rot, new_piece, spawn_x, spawn_y):
         c.rgoto(sh); c.emit('[-]'); c.add(EMPTY)
     c.rgoto(0)
     emit_resync_to_left_sentinel(c)
+    return c
+
+
+def emit_spawn_only(c, new_piece, spawn_x, spawn_y):
+    """Write a fresh piece's markers + shadow (rot 0) at (spawn_x, spawn_y),
+    absolutely. Pre: cursor known. Post: cursor at LEFT_SENT."""
     new_rel = footprint(new_piece, 0)
     for i, (dx, dy) in enumerate(new_rel):
         cl = cell(c, spawn_x + dx, spawn_y + dy)
@@ -345,6 +365,12 @@ def emit_lock_and_spawn(c, piece, rot, new_piece, spawn_x, spawn_y):
     c.set_at(anchor_abs + SH_PY, spawn_y + SH_BIAS)
     c.set_at(anchor_abs + SH_ROT, 0 + SH_BIAS)
     c.goto("LEFT_SENT")
+    return c
+
+
+def emit_lock_and_spawn(c, piece, rot, new_piece, spawn_x, spawn_y):
+    emit_lock_only(c, piece, rot)
+    emit_spawn_only(c, new_piece, spawn_x, spawn_y)
     return c
 
 

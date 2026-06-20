@@ -1,19 +1,18 @@
 """
-Build entrypoint: compile the game to tetris.bf and emit the memory map.
+Build entrypoint: compile the full game to tetris.bf and emit the memory map.
 
   python build.py   -> writes tetris.bf + tests/memory_map.txt
 """
 import os
 
-from src.game import build_game, init_well, emit_render_well, dump_memory_map
+from src.game import dump_memory_map
+from src.loop import build_full_game
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 def build():
-    c = build_game()                 # allocate memory + assert no overlap
-    init_well(c)                     # fill the well with EMPTY (biased 1)
-    emit_render_well(c)              # one static ANSI render pass
+    c = build_full_game()            # allocate memory + assemble init+loop+finale
 
     bf = c.build()
     with open(os.path.join(ROOT, "tetris.bf"), "w", encoding="utf-8") as f:

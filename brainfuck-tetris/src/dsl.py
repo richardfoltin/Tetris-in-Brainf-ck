@@ -602,32 +602,30 @@ def is_zero(c, x, out, t):
 
 
 def switch_cascade(c, work, candidates, g, m, t):
-    """Exact-match switch over cell `work` (destructive; work -> 0 at end)."""
+    """Exact-match switch over cell `work`: for each (k, body), run body() iff
+    work == k. Matches by the KEY k (not list position). `work` is preserved
+    across the tests and cleared to 0 at the end (destructive contract). g, m, t
+    are scratch (left 0). Keys should be distinct so at most one body fires."""
     for (k, body) in candidates:
-        set_const(c, g, 0)
+        # g = work (copy via t; work preserved)
+        clear(c, g)
         clear(c, t)
         c.goto(work)
         c.emit("[")
         c.goto(g); c.emit("+")
         c.goto(t); c.emit("+")
-        c.goto(work); c.emit("-")
-        c.goto(work)
-        c.emit("]")
+        c.goto(work); c.emit("-]")          # work -> 0; g=t=work_orig
         c.goto(t)
         c.emit("[")
         c.goto(work); c.emit("+")
-        c.goto(t); c.emit("-")
-        c.goto(t)
-        c.emit("]")
+        c.goto(t); c.emit("-]")             # restore work; t=0
+        # g -= k ; m = (g == 0) == (work == k)
         c.goto(g)
-        c.emit("[")
-        c.goto(g); c.emit("[-]")
-        c.goto(work); c.emit("-")
-        is_zero(c, work, m, t)
+        if k:
+            c.emit("-" * (k & 0xFF))
+        is_zero(c, g, m, t)                  # m = (g==0); g preserved, t=0
+        clear(c, g)
         if_then_consume(c, m, body)
-        c.goto(g)
-        c.emit("]")
-        c.goto(work)
     clear(c, work)
     c.goto(work)
 
