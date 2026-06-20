@@ -318,6 +318,41 @@ end‑to‑end execution or an adversarial second look.
 
 ---
 
+## Roadmap — ideas & next steps
+
+Concrete, mostly‑scoped follow‑ups, roughly in bang‑for‑buck order:
+
+**Gameplay**
+- **Hard drop** — Space is already decoded (`F_HARD` in `driver.py`); wire it to
+  repeat the gravity step until the piece locks.
+- **Wall kicks** — on a blocked rotation, retry it shifted one cell left, then
+  right, before giving up (the spec's "simple kick" — no SRS).
+- **Pause** (`P`) and a small **next‑piece preview** (`R_NEXT` is already tracked,
+  it just isn't drawn yet).
+- **Levels & speed ramp** — shrink `drop_period` every N lines (the `level` and
+  `drop_period` cells already exist).
+- **Proper 7‑bag RNG** seeded by first‑input timing, replacing the current LCG.
+
+**The (B) twist — the headline feature still to build**
+- On each line clear, append the cleared cells' command glyphs to a balance‑
+  corrected `asm_buf`; at game over, run that program in the host sandbox
+  (`bf_run.run_sandbox`, which already exists) and show its output before the
+  score coda. This is what makes *"your line clears compile a Brainfuck program."*
+
+**Polish**
+- **Colour** — one ANSI SGR per piece id (7 colours), reset each frame.
+- **Tape inspector** panel — a logical‑focus pointer plus a couple of registers.
+
+**Performance & size**
+- `tetris.bf` is ~86 MB and a frame is ~24 fps headless. The cost is the
+  read‑back/render pointer runs to registers sitting far from the well; moving the
+  hot loop scratch adjacent to the well would shrink the source severalfold
+  (faster ~10 s startup compile) and push the frame rate toward a steady 30 fps.
+- A peephole pass over the emitted BF (run‑collapsing, dead‑scratch elision) would
+  help both size and speed.
+
+---
+
 ## Repository layout
 
 ```
