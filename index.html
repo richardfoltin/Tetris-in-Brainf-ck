@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Claude Code — a terminálban élő AI fejlesztő</title>
+<meta name="description" content="Mi az a Claude Code, miért zseniális, és hogyan használd: hookok, skillek, MCP, subagentek és minden más, érthetően." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #14110e;
+    --bg-2: #1b1611;
+    --bg-3: #241d17;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --text: #f2ede4;
+    --text-dim: #a99f92;
+    --accent: #e08a5f;
+    --accent-2: #d97757;
+    --accent-3: #c85f3f;
+    --glow: rgba(224, 138, 95, 0.35);
+
+    --c-hooks: #e08a5f;
+    --c-skills: #e9b949;
+    --c-mcp: #5fb6c8;
+    --c-agents: #b58be0;
+    --c-misc: #7cc08a;
+
+    --radius: 18px;
+    --radius-sm: 12px;
+    --maxw: 1120px;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Fira Code', Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  ::selection { background: var(--accent-2); color: #1a1410; }
+
+  a { color: inherit; text-decoration: none; }
+
+  /* ---------- decorative background ---------- */
+  .bg-grain {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.025) 1px, transparent 0);
+    background-size: 28px 28px;
+  }
+
+  /* ---------- nav ---------- */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(16px);
+    background: rgba(20, 17, 14, 0.72);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner {
+    max-width: var(--maxw); margin: 0 auto;
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  }
+  .logo { display: flex; align-items: center; gap: 11px; font-weight: 800; font-size: 1.05rem; letter-spacing: -0.02em; }
+  .logo-mark {
+    width: 30px; height: 30px; border-radius: 8px; flex: none;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-3) 100%);
+    display: grid; place-items: center; color: #1a1410; font-weight: 900; font-size: 1.1rem;
+    box-shadow: 0 4px 16px -4px var(--glow);
+  }
+  .nav-links { display: flex; gap: 4px; align-items: center; overflow-x: auto; }
+  .nav-links::-webkit-scrollbar { display: none; }
+  .nav-links a {
+    padding: 7px 13px; border-radius: 9px; font-size: 0.9rem; font-weight: 500;
+    color: var(--text-dim); white-space: nowrap; transition: color .2s, background .2s;
+  }
+  .nav-links a:hover, .nav-links a.active { color: var(--text); background: var(--bg-3); }
+  @media (max-width: 760px) { .nav-links { display: none; } }
+
+  /* ---------- layout ---------- */
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+  section { scroll-margin-top: 80px; }
+
+  /* ---------- hero ---------- */
+  .hero { position: relative; padding: 96px 0 72px; overflow: hidden; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.5; z-index: 0; pointer-events: none; }
+  .blob-1 { width: 520px; height: 520px; background: var(--accent-3); top: -180px; right: -120px; animation: float1 18s ease-in-out infinite; }
+  .blob-2 { width: 420px; height: 420px; background: #8b5fb0; bottom: -160px; left: -120px; opacity: 0.28; animation: float2 22s ease-in-out infinite; }
+  .blob-3 { width: 300px; height: 300px; background: #c8a13f; top: 120px; left: 40%; opacity: 0.16; animation: float1 26s ease-in-out infinite; }
+  @keyframes float1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-40px, 40px); } }
+  @keyframes float2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(50px, -30px); } }
+
+  .hero-inner { position: relative; z-index: 2; max-width: 800px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 0.82rem; font-weight: 600; letter-spacing: 0.02em;
+    color: var(--accent); background: rgba(224,138,95,0.1);
+    border: 1px solid rgba(224,138,95,0.25);
+    padding: 6px 14px; border-radius: 100px; margin-bottom: 26px;
+  }
+  .eyebrow .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  h1 {
+    font-size: clamp(2.6rem, 8vw, 5.2rem); font-weight: 900; line-height: 1.02;
+    letter-spacing: -0.04em; margin-bottom: 24px;
+  }
+  h1 .grad {
+    background: linear-gradient(115deg, var(--accent) 10%, #efb56a 55%, var(--accent-3) 100%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .lede { font-size: clamp(1.1rem, 2.5vw, 1.4rem); color: var(--text-dim); max-width: 640px; margin-bottom: 36px; }
+  .lede strong { color: var(--text); font-weight: 600; }
+  .hero-cta { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 13px 24px; border-radius: 12px; font-weight: 600; font-size: 0.98rem;
+    cursor: pointer; border: 1px solid transparent; transition: transform .15s, box-shadow .2s, background .2s;
+  }
+  .btn-primary { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-3) 100%); color: #1a1410; box-shadow: 0 8px 28px -8px var(--glow); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 34px -8px var(--glow); }
+  .btn-ghost { background: var(--bg-2); border-color: var(--border-strong); color: var(--text); }
+  .btn-ghost:hover { transform: translateY(-2px); background: var(--bg-3); }
+
+  /* ---------- terminal mock ---------- */
+  .terminal {
+    margin-top: 56px; position: relative; z-index: 2;
+    background: #100d0a; border: 1px solid var(--border-strong); border-radius: var(--radius);
+    overflow: hidden; box-shadow: 0 40px 80px -30px rgba(0,0,0,0.7);
+  }
+  .term-bar { display: flex; align-items: center; gap: 8px; padding: 13px 16px; background: var(--bg-3); border-bottom: 1px solid var(--border); }
+  .term-bar .tdot { width: 12px; height: 12px; border-radius: 50%; }
+  .td-r { background: #ff5f57; } .td-y { background: #febc2e; } .td-g { background: #28c840; }
+  .term-title { margin-left: 10px; font-family: var(--mono); font-size: 0.8rem; color: var(--text-dim); }
+  .term-body { padding: 22px; font-family: var(--mono); font-size: 0.88rem; line-height: 1.85; overflow-x: auto; }
+  .term-body .prompt { color: var(--accent); }
+  .term-body .user { color: var(--text); }
+  .term-body .tool { color: var(--text-dim); }
+  .term-body .ok { color: var(--c-misc); }
+  .term-body .bullet { color: var(--accent); }
+  .term-body .cursor { display: inline-block; width: 9px; height: 1.05em; background: var(--accent); vertical-align: text-bottom; animation: blink 1.1s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ---------- section heading ---------- */
+  .sec { padding: 80px 0; border-top: 1px solid var(--border); }
+  .sec-tag { font-family: var(--mono); font-size: 0.82rem; color: var(--accent); font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 14px; }
+  .sec h2 { font-size: clamp(1.9rem, 4.5vw, 2.9rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 18px; }
+  .sec-sub { font-size: 1.12rem; color: var(--text-dim); max-width: 680px; }
+
+  /* ---------- feature cards (why) ---------- */
+  .grid { display: grid; gap: 18px; margin-top: 44px; }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 860px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 28px; transition: transform .2s, border-color .2s, background .2s;
+  }
+  .card:hover { transform: translateY(-4px); border-color: var(--border-strong); background: var(--bg-3); }
+  .card .ico {
+    width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center;
+    margin-bottom: 18px; color: var(--accent);
+    background: rgba(224,138,95,0.12); border: 1px solid rgba(224,138,95,0.2);
+  }
+  .card h3 { font-size: 1.18rem; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.01em; }
+  .card p { color: var(--text-dim); font-size: 0.97rem; }
+
+  /* ---------- start steps ---------- */
+  .steps { counter-reset: step; display: grid; gap: 16px; margin-top: 40px; }
+  .step { display: flex; gap: 18px; align-items: flex-start; }
+  .step-num {
+    counter-increment: step; flex: none; width: 36px; height: 36px; border-radius: 10px;
+    background: var(--bg-3); border: 1px solid var(--border-strong);
+    display: grid; place-items: center; font-weight: 700; color: var(--accent); font-family: var(--mono);
+  }
+  .step-num::before { content: counter(step); }
+  .step-body { flex: 1; padding-top: 4px; }
+  .step-body h4 { font-size: 1.05rem; margin-bottom: 6px; }
+  .step-body p { color: var(--text-dim); font-size: 0.96rem; }
+
+  /* ---------- code block ---------- */
+  .code { background: #0e0b08; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; margin-top: 18px; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; background: var(--bg-3); border-bottom: 1px solid var(--border); }
+  .code-lang { font-family: var(--mono); font-size: 0.76rem; color: var(--text-dim); letter-spacing: 0.04em; text-transform: uppercase; }
+  .copy {
+    font-family: var(--font); font-size: 0.78rem; font-weight: 600; color: var(--text-dim);
+    background: transparent; border: 1px solid var(--border-strong); border-radius: 7px;
+    padding: 4px 11px; cursor: pointer; transition: all .15s;
+  }
+  .copy:hover { color: var(--text); border-color: var(--accent); }
+  .copy.done { color: var(--c-misc); border-color: var(--c-misc); }
+  pre { margin: 0; padding: 18px; overflow-x: auto; }
+  pre code { font-family: var(--mono); font-size: 0.86rem; line-height: 1.7; color: #d8cfc2; white-space: pre; }
+  .tok-c { color: #7d8a6e; font-style: italic; }   /* comment */
+  .tok-k { color: #e08a5f; }                         /* keyword */
+  .tok-s { color: #c8a13f; }                         /* string */
+  .tok-f { color: #7cc08a; }                         /* function / name */
+  .tok-p { color: #b58be0; }                         /* punctuation-ish / special */
+  .tok-d { color: #6f675c; }                         /* dim */
+
+  /* ---------- feature deep dive ---------- */
+  .feature { padding: 84px 0; border-top: 1px solid var(--border); position: relative; }
+  .feature-head { display: flex; align-items: center; gap: 18px; margin-bottom: 14px; flex-wrap: wrap; }
+  .feature-ico {
+    width: 56px; height: 56px; border-radius: 15px; flex: none; display: grid; place-items: center;
+    color: var(--fc, var(--accent));
+    background: color-mix(in srgb, var(--fc, var(--accent)) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--fc, var(--accent)) 35%, transparent);
+  }
+  .feature-kicker { font-family: var(--mono); font-size: 0.8rem; color: var(--fc, var(--accent)); letter-spacing: 0.06em; text-transform: uppercase; }
+  .feature h2 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -0.03em; }
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; margin-top: 36px; }
+  @media (max-width: 900px) { .feature-grid { grid-template-columns: 1fr; gap: 28px; } }
+  .feature-text p { color: var(--text-dim); font-size: 1.04rem; margin-bottom: 18px; }
+  .feature-text p strong { color: var(--text); font-weight: 600; }
+  .why-list { list-style: none; display: grid; gap: 13px; margin-top: 8px; }
+  .why-list li { display: flex; gap: 12px; align-items: flex-start; font-size: 0.98rem; }
+  .why-list .check {
+    flex: none; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; margin-top: 2px;
+    color: var(--fc, var(--accent));
+    background: color-mix(in srgb, var(--fc, var(--accent)) 16%, transparent);
+  }
+  .why-list li strong { color: var(--text); font-weight: 600; }
+  .why-list li span { color: var(--text-dim); }
+
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+  .pill {
+    font-family: var(--mono); font-size: 0.78rem; padding: 5px 11px; border-radius: 8px;
+    background: var(--bg-3); border: 1px solid var(--border); color: var(--text-dim);
+  }
+
+  /* ---------- misc feature mini grid ---------- */
+  .mini-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 40px; }
+  @media (max-width: 760px) { .mini-grid { grid-template-columns: 1fr; } }
+  .mini {
+    background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 22px; display: flex; gap: 16px; align-items: flex-start; transition: border-color .2s, background .2s;
+  }
+  .mini:hover { border-color: var(--border-strong); background: var(--bg-3); }
+  .mini .ico { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; color: var(--c-misc); background: rgba(124,192,138,0.12); border: 1px solid rgba(124,192,138,0.22); }
+  .mini h4 { font-size: 1.02rem; margin-bottom: 5px; }
+  .mini p { color: var(--text-dim); font-size: 0.92rem; }
+  .mini code { font-family: var(--mono); font-size: 0.84rem; color: var(--accent); background: rgba(224,138,95,0.1); padding: 1px 6px; border-radius: 5px; }
+
+  /* ---------- tips ---------- */
+  .tips { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; margin-top: 40px; }
+  @media (max-width: 760px) { .tips { grid-template-columns: 1fr; } }
+  .tip { background: var(--bg-2); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; padding: 18px 20px; }
+  .tip b { color: var(--text); }
+  .tip span { color: var(--text-dim); font-size: 0.95rem; }
+
+  /* ---------- callout ---------- */
+  .callout {
+    margin-top: 30px; background: linear-gradient(135deg, rgba(224,138,95,0.1), rgba(181,139,224,0.07));
+    border: 1px solid rgba(224,138,95,0.25); border-radius: var(--radius); padding: 26px 28px;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .callout .ci { flex: none; color: var(--accent); }
+  .callout p { color: var(--text); }
+  .callout p span { color: var(--text-dim); }
+
+  /* ---------- footer ---------- */
+  footer { border-top: 1px solid var(--border); padding: 60px 0 50px; margin-top: 40px; }
+  .foot-grid { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 30px; }
+  .foot-links { display: flex; gap: 36px; flex-wrap: wrap; }
+  .foot-col h5 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 14px; }
+  .foot-col a { display: block; color: var(--text); font-size: 0.95rem; margin-bottom: 9px; opacity: 0.8; transition: opacity .15s, color .15s; }
+  .foot-col a:hover { opacity: 1; color: var(--accent); }
+  .foot-bottom { margin-top: 44px; padding-top: 26px; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.88rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+
+  /* ---------- reveal animation ---------- */
+  .reveal { opacity: 0; transform: translateY(26px); transition: opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); }
+  .reveal.visible { opacity: 1; transform: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    .reveal { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-grain"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <div class="logo"><span class="logo-mark">C</span> Claude&nbsp;Code</div>
+    <div class="nav-links">
+      <a href="#intro">Mi ez?</a>
+      <a href="#miert">Miért jó?</a>
+      <a href="#start">Start</a>
+      <a href="#hooks">Hookok</a>
+      <a href="#skills">Skillek</a>
+      <a href="#mcp">MCP</a>
+      <a href="#subagents">Subagentek</a>
+      <a href="#tovabbi">Továbbiak</a>
+      <a href="#tippek">Tippek</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <div class="wrap">
+    <div class="hero-inner">
+      <span class="eyebrow"><span class="dot"></span> Anthropic · AI fejlesztői eszköz</span>
+      <h1>Nem autocomplete.<br /><span class="grad">Egy igazi fejlesztő</span><br />a termináldban.</h1>
+      <p class="lede">A <strong>Claude Code</strong> egy <em>agentic</em> kódoló eszköz: érti az egész kódbázisodat, fájlokat olvas és ír, parancsokat futtat, tesztel és commitol — miközben te csak elmondod neki, mit szeretnél.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#miert">Miért zseniális? ↓</a>
+        <a class="btn btn-ghost" href="#start">Hogyan kezdj neki</a>
+      </div>
+    </div>
+
+    <!-- terminal mock -->
+    <div class="terminal reveal">
+      <div class="term-bar">
+        <span class="tdot td-r"></span><span class="tdot td-y"></span><span class="tdot td-g"></span>
+        <span class="term-title">~/projektem — claude</span>
+      </div>
+      <div class="term-body">
+<span class="prompt">›</span> <span class="user">Adj a beállítások oldalhoz egy sötét mód kapcsolót, és írj rá tesztet.</span>
+
+<span class="bullet">●</span> <span class="tool">Megnézem, hogyan néz ki most a beállítások oldal…</span>
+  <span class="tool">Read  src/Settings.tsx</span>
+<span class="bullet">●</span> <span class="tool">Létrehozom a téma-kezelő contextet…</span>
+  <span class="tool">Write src/ThemeContext.tsx</span>
+<span class="bullet">●</span> <span class="tool">Bekötöm a kapcsolót és írok hozzá tesztet…</span>
+  <span class="tool">Edit  src/Settings.tsx</span>
+  <span class="tool">Write src/Settings.test.tsx</span>
+<span class="bullet">●</span> <span class="tool">Futtatom a teszteket…</span>
+  <span class="ok">✓ 4 passed (1.2s)</span>
+
+<span class="ok">✓ Kész!</span> <span class="tool">Hozzáadtam a sötét mód kapcsolót, eltárolja a választást,
+  és a teszt is zöld. Megnézed a diffet?</span>
+<span class="prompt">›</span> <span class="cursor"></span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- INTRO -->
+<section id="intro" class="sec wrap">
+  <div class="reveal">
+    <div class="sec-tag">// Mi ez egyáltalán</div>
+    <h2>A Claude Code egy ágens, nem egy chatablak</h2>
+    <p class="sec-sub">A legtöbb AI eszköz javasol — te másolod be a kódot. A Claude Code <strong style="color:var(--text)">cselekszik</strong>: a terminálodban fut, hozzáfér a projekted fájljaihoz, és önállóan végigvisz egész feladatokat. Megérti a kérésed, tervet készít, megírja a kódot, lefuttatja, és ha hibázik, kijavítja magát.</p>
+  </div>
+  <div class="grid grid-3">
+    <div class="card reveal">
+      <div class="ico">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>
+      </div>
+      <h3>A terminálban él</h3>
+      <p>Ott dolgozik, ahol te is: git, npm, tesztek, build. Nincs külön felület, amibe ki-be kell másolgatni.</p>
+    </div>
+    <div class="card reveal">
+      <div class="ico">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/></svg>
+      </div>
+      <h3>Érti az egész projektet</h3>
+      <p>Magától megkeresi a releváns fájlokat, követi a kódbázis konvencióit, és összefüggéseiben gondolkodik — nem csak egy kódrészletet lát.</p>
+    </div>
+    <div class="card reveal">
+      <div class="ico">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5L19 19M19 5l-2.5 2.5M7.5 16.5L5 19"/></svg>
+      </div>
+      <h3>Végtelenül bővíthető</h3>
+      <p>Hookok, skillek, MCP-szerverek és subagentek: a saját igényeidre szabod. Erről szól ez az oldal lentebb. ↓</p>
+    </div>
+  </div>
+</section>
+
+<!-- WHY -->
+<section id="miert" class="sec wrap">
+  <div class="reveal">
+    <div class="sec-tag">// A lényeg</div>
+    <h2>Miért más, mint amit eddig láttál</h2>
+    <p class="sec-sub">Négy dolog, ami miatt a Claude Code nem csak „egy újabb AI", hanem egy eszköz, amivel tényleg gyorsabban szállítasz.</p>
+  </div>
+  <div class="grid grid-2">
+    <div class="card reveal">
+      <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg></div>
+      <h3>Cselekszik, nem csak tanácsol</h3>
+      <p>Megnyitja, szerkeszti, létrehozza a fájlokat, lefuttatja a teszteket, és git diffet csinál. Te a végeredményt nézed át, nem te gépeled be.</p>
+    </div>
+    <div class="card reveal">
+      <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
+      <h3>Sima magyar (vagy angol) szöveg</h3>
+      <p>Nincs új szintaxis, amit meg kell tanulni. Elmondod, mit akarsz, ahogy egy csapattársnak mondanád. Ő kérdez vissza, ha valami nem világos.</p>
+    </div>
+    <div class="card reveal">
+      <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      <h3>Te tartod a kontrollt</h3>
+      <p>Veszélyes művelet (fájl törlése, parancs futtatása) előtt engedélyt kér. Beállíthatod, mit tehet automatikusan és mit nem.</p>
+    </div>
+    <div class="card reveal">
+      <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></div>
+      <h3>A te workflow-odra szabod</h3>
+      <p>Beleépíted a saját szabályaidat (hookok), a csapatod tudását (skillek), bekötöd a többi eszközt (MCP), és párhuzamosítasz (subagentek).</p>
+    </div>
+  </div>
+</section>
+
+<!-- START -->
+<section id="start" class="sec wrap">
+  <div class="reveal">
+    <div class="sec-tag">// 60 másodperc</div>
+    <h2>Indulj el ennyiből</h2>
+    <p class="sec-sub">Kell hozzá Node.js és egy projekt, amin dolgozol. Ennyi.</p>
+  </div>
+  <div class="steps">
+    <div class="step reveal">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Telepítsd globálisan</h4>
+        <p>Egyetlen npm parancs, és kész is a CLI.</p>
+        <div class="code">
+          <div class="code-head"><span class="code-lang">bash</span><button class="copy">Másolás</button></div>
+          <pre><code><span class="tok-c"># telepítés</span>
+npm install -g @anthropic-ai/claude-code</code></pre>
+        </div>
+      </div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Lépj be a projektedbe és indítsd el</h4>
+        <p>Első indításkor bejelentkezel a Claude-fiókoddal. Utána már beszélgethettek.</p>
+        <div class="code">
+          <div class="code-head"><span class="code-lang">bash</span><button class="copy">Másolás</button></div>
+          <pre><code>cd ~/projektem
+claude</code></pre>
+        </div>
+      </div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Mondd el, mit szeretnél</h4>
+        <p>Akár egy bug, akár egy új feature, akár „magyarázd el, hogyan működik ez a modul". Tipp: nagyobb feladatnál kérd meg, hogy <b>előbb készítsen tervet</b> (Plan mode, <code style="font-family:var(--mono);color:var(--accent)">Shift+Tab</code>).</p>
+        <div class="code">
+          <div class="code-head"><span class="code-lang">claude</span><button class="copy">Másolás</button></div>
+          <pre><code><span class="tok-k">›</span> Hol kezelődik a bejelentkezés? Készíts tervet, hogyan
+  tegyünk hozzá „elfelejtett jelszó" funkciót.</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== HOOKS ========== -->
+<section id="hooks" class="feature" style="--fc: var(--c-hooks)">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="feature-head">
+        <div class="feature-ico">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </div>
+        <div>
+          <div class="feature-kicker">Automatizálás</div>
+          <h2>Hookok</h2>
+        </div>
+      </div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-text reveal">
+        <p><strong>Mik ezek?</strong> Saját shell-parancsok, amik automatikusan lefutnak a Claude Code életciklusának adott pontjain — például <em>mielőtt</em> egy eszközt használ, vagy <em>miután</em> szerkesztett egy fájlt.</p>
+        <p>A lényeg: ez <strong>determinisztikus</strong>. Nem az AI-ra bízod, hogy „ne felejtse el" lefuttatni a formázót — a hook <em>mindig</em> lefut, mert te állítottad be, nem ő dönt róla.</p>
+        <ul class="why-list">
+          <li><span class="check">✓</span><span><strong>Auto-formázás:</strong> Prettier / ESLint minden szerkesztés után, magától.</span></li>
+          <li><span class="check">✓</span><span><strong>Védőháló:</strong> veszélyes parancsok (pl. <code style="font-family:var(--mono);color:var(--c-hooks)">rm -rf</code>) blokkolása futás előtt.</span></li>
+          <li><span class="check">✓</span><span><strong>Értesítés:</strong> kapj egy hangot vagy üzenetet, ha végzett egy feladattal.</span></li>
+          <li><span class="check">✓</span><span><strong>Naplózás:</strong> jegyezd fel, mit csinált, audithoz vagy tanuláshoz.</span></li>
+        </ul>
+        <div class="pill-row">
+          <span class="pill">PreToolUse</span>
+          <span class="pill">PostToolUse</span>
+          <span class="pill">UserPromptSubmit</span>
+          <span class="pill">Stop</span>
+          <span class="pill">SessionStart</span>
+          <span class="pill">Notification</span>
+        </div>
+      </div>
+      <div class="reveal">
+        <p style="color:var(--text-dim);font-size:0.95rem;margin-bottom:6px">Példa: formázz minden fájlt, amit Claude szerkesztett. A <code style="font-family:var(--mono);color:var(--c-hooks)">.claude/settings.json</code>-ba kerül:</p>
+        <div class="code">
+          <div class="code-head"><span class="code-lang">.claude/settings.json</span><button class="copy">Másolás</button></div>
+          <pre><code>{
+  <span class="tok-f">"hooks"</span>: {
+    <span class="tok-f">"PostToolUse"</span>: [
+      {
+        <span class="tok-f">"matcher"</span>: <span class="tok-s">"Edit|Write"</span>,
+        <span class="tok-f">"hooks"</span>: [
+          {
+            <span class="tok-f">"type"</span>: <span class="tok-s">"command"</span>,
+            <span class="tok-f">"command"</span>: <span class="tok-s">"npx prettier --write \"$CLAUDE_PROJECT_DIR\""</span>
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+        </div>
+        <p style="color:var(--text-dim);font-size:0.9rem;margin-top:14px">A hook a tool adatait JSON-ként kapja meg a <em>stdin</em>-en, és kilépési kóddal jelezhet vissza (pl. <code style="font-family:var(--mono);color:var(--c-hooks)">exit 2</code> = állítsd le / blokkold a műveletet).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SKILLS ========== -->
+<section id="skills" class="feature" style="--fc: var(--c-skills)">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="feature-head">
+        <div class="feature-ico">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6z"/></svg>
+        </div>
+        <div>
+          <div class="feature-kicker">Újrahasználható tudás</div>
+          <h2>Skillek</h2>
+        </div>
+      </div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-text reveal">
+        <p><strong>Mik ezek?</strong> Egy skill egy mappa, benne egy <code style="font-family:var(--mono);color:var(--c-skills)">SKILL.md</code> fájl, ami leírja, <em>hogyan</em> kell egy adott dolgot csinálni. Lehet mellé szkript, sablon, bármilyen segédfájl.</p>
+        <p>A varázslat: Claude a leírás (<em>description</em>) alapján <strong>magától eldönti, mikor van rá szükség</strong>, és előveszi. Olyan, mintha betanítanád egy új kollégát egy folyamatra, és onnantól tudja.</p>
+        <ul class="why-list">
+          <li><span class="check">✓</span><span><strong>Csapat-tudás:</strong> „nálunk így csinálunk egy PR-t / egy migrációt / egy release-t".</span></li>
+          <li><span class="check">✓</span><span><strong>Kész képességek:</strong> léteznek pl. PDF-, Word-, Excel-kezelő skillek dobozból.</span></li>
+          <li><span class="check">✓</span><span><strong>Kétféleképp indul:</strong> Claude automatikusan, vagy te kézzel <code style="font-family:var(--mono);color:var(--c-skills)">/skill-neve</code> paranccsal.</span></li>
+          <li><span class="check">✓</span><span><strong>Megosztható:</strong> berakod a repóba, és az egész csapat ugyanúgy dolgozik.</span></li>
+        </ul>
+      </div>
+      <div class="reveal">
+        <p style="color:var(--text-dim);font-size:0.95rem;margin-bottom:6px">Egy egyszerű skill. A fájl helye: <code style="font-family:var(--mono);color:var(--c-skills)">.claude/skills/pr-review/SKILL.md</code></p>
+        <div class="code">
+          <div class="code-head"><span class="code-lang">SKILL.md</span><button class="copy">Másolás</button></div>
+          <pre><code><span class="tok-d">---</span>
+<span class="tok-f">name</span>: pr-review
+<span class="tok-f">description</span>: <span class="tok-s">A csapatunk PR-review folyamata.</span>
+  <span class="tok-s">Akkor használd, amikor egy pull requestet</span>
+  <span class="tok-s">vagy egy diffet kell átnézni.</span>
+<span class="tok-d">---</span>
+
+<span class="tok-k"># PR Review folyamat</span>
+
+1. Nézd át a diffet hibákért és biztonsági résekért.
+2. Ellenőrizd, hogy van-e teszt az új kódhoz.
+3. Nézd meg, követi-e a kód a CONTRIBUTING.md-t.
+4. Foglald össze a találatokat súlyosság szerint.</code></pre>
+        </div>
+        <p style="color:var(--text-dim);font-size:0.9rem;margin-top:14px">A jó <code style="font-family:var(--mono);color:var(--c-skills)">description</code> a kulcs: ebből tudja Claude, mikor érdemes elővennie a skillt.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== MCP ========== -->
+<section id="mcp" class="feature" style="--fc: var(--c-mcp)">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="feature-head">
+        <div class="feature-ico">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.5"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="18" r="2"/><path d="M6.6 7.2l3.6 3.6M17.4 7.2l-3.6 3.6M6.6 16.8l3.6-3.6M17.4 16.8l-3.6-3.6"/></svg>
+        </div>
+        <div>
+          <div class="feature-kicker">Külső eszközök bekötése</div>
+          <h2>MCP — Model Context Protocol</h2>
+        </div>
+      </div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-text reveal">
+        <p><strong>Mi ez?</strong> Egy nyílt szabvány, amivel az AI-t külső eszközökhöz és adatforrásokhoz kötöd. Gyakran úgy emlegetik: <strong>„USB-C az AI-nak"</strong> — egy univerzális csatlakozó.</p>
+        <p>Claude alapból a fájljaidat és a terminált látja. MCP-vel bekötöd a <em>GitHubot, adatbázist, Slacket, böngészőt, Figma-t, Sentryt</em> — bármit, amihez van MCP-szerver. Onnantól ezek eszközeit közvetlenül használja.</p>
+        <ul class="why-list">
+          <li><span class="check">✓</span><span><strong>Valódi adatok:</strong> „nyisd meg a #142-es GitHub issue-t és javítsd ki".</span></li>
+          <li><span class="check">✓</span><span><strong>Lekérdezés:</strong> kérdezd a saját adatbázisodat természetes nyelven.</span></li>
+          <li><span class="check">✓</span><span><strong>Böngésző:</strong> nyisson meg egy oldalt és ellenőrizze, működik-e a változtatásod.</span></li>
+          <li><span class="check">✓</span><span><strong>Szabvány:</strong> az Anthropic nyílt forrásúvá tette, ma iparági standard — rengeteg kész szerver van.</span></li>
+        </ul>
+      </div>
+      <div class="reveal">
+        <p style="color:var(--text-dim);font-size:0.95rem;margin-bottom:6px">MCP-szerver hozzáadása egy paranccsal:</p>
+        <div class="code">
+          <div class="code-head"><span class="code-lang">bash</span><button class="copy">Másolás</button></div>
+          <pre><code><span class="tok-c"># pl. a GitHub MCP-szerver bekötése</span>
+claude mcp add github \
+  -- npx -y @modelcontextprotocol/server-github
+
+<span class="tok-c"># bekötött szerverek listája</span>
+claude mcp list</code></pre>
+        </div>
+        <p style="color:var(--text-dim);font-size:0.95rem;margin:18px 0 6px">Utána egyszerűen kéred, amit akarsz:</p>
+        <div class="code">
+          <div class="code-head"><span class="code-lang">claude</span><button class="copy">Másolás</button></div>
+          <pre><code><span class="tok-k">›</span> Listázd a nyitott „bug" címkéjű issue-kat,
+  és csinálj egy tervet a legrégebbire.</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SUBAGENTS ========== -->
+<section id="subagents" class="feature" style="--fc: var(--c-agents)">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="feature-head">
+        <div class="feature-ico">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3"/><circle cx="5" cy="17" r="2.5"/><circle cx="19" cy="17" r="2.5"/><path d="M12 10v3M12 13l-5 2M12 13l5 2"/></svg>
+        </div>
+        <div>
+          <div class="feature-kicker">Párhuzamosítás & fókusz</div>
+          <h2>Subagentek</h2>
+        </div>
+      </div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-text reveal">
+        <p><strong>Mik ezek?</strong> Specializált al-ágensek, mindegyiknek <em>saját kontextusablaka</em>, <em>saját system promptja</em> és <em>saját eszköz-készlete</em> van. A fő Claude delegál nekik egy-egy feladatot.</p>
+        <p>Gondolj rá úgy, mint egy csapatvezetőre, aki szétoszt feladatokat. Mindenki a sajátján dolgozik, a vezető pedig csak a kész eredményeket kapja vissza.</p>
+        <ul class="why-list">
+          <li><span class="check">✓</span><span><strong>Tiszta kontextus:</strong> egy nagy keresés zaja nem tömi tele a fő beszélgetést — csak a végeredmény jön vissza.</span></li>
+          <li><span class="check">✓</span><span><strong>Párhuzam:</strong> több subagent dolgozhat egyszerre független feladatokon.</span></li>
+          <li><span class="check">✓</span><span><strong>Specializáció:</strong> egy „code-reviewer" agentnek más a prompja és szűkebbek a jogai, mint egy „kutató" agentnek.</span></li>
+          <li><span class="check">✓</span><span><strong>Beépítettek is vannak:</strong> pl. kereső (Explore), tervező (Plan), általános (general-purpose).</span></li>
+        </ul>
+      </div>
+      <div class="reveal">
+        <p style="color:var(--text-dim);font-size:0.95rem;margin-bottom:6px">Saját subagent definíciója. Helye: <code style="font-family:var(--mono);color:var(--c-agents)">.claude/agents/code-reviewer.md</code></p>
+        <div class="code">
+          <div class="code-head"><span class="code-lang">code-reviewer.md</span><button class="copy">Másolás</button></div>
+          <pre><code><span class="tok-d">---</span>
+<span class="tok-f">name</span>: code-reviewer
+<span class="tok-f">description</span>: <span class="tok-s">Kódminőségi és biztonsági</span>
+  <span class="tok-s">review-k. Használd proaktívan minden</span>
+  <span class="tok-s">nagyobb kódváltoztatás után.</span>
+<span class="tok-f">tools</span>: Read, Grep, Glob
+<span class="tok-d">---</span>
+
+Tapasztalt code reviewer vagy. Nézd át a
+változtatásokat, és keress:
+- logikai és határeset-hibákat,
+- biztonsági réseket,
+- hiányzó teszteket.
+A találatokat súlyosság szerint rendezd.</code></pre>
+        </div>
+        <p style="color:var(--text-dim);font-size:0.9rem;margin-top:14px">A <code style="font-family:var(--mono);color:var(--c-agents)">tools</code> sorral szűkíted, mihez nyúlhat — itt pl. csak olvasni tud, írni nem.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== TOVÁBBIAK ========== -->
+<section id="tovabbi" class="sec wrap">
+  <div class="reveal">
+    <div class="sec-tag">// És még</div>
+    <h2>Amire még érdemes ránézni</h2>
+    <p class="sec-sub">A négy nagy funkción túl rengeteg apróság teszi kényelmessé a napi használatot.</p>
+  </div>
+  <div class="mini-grid">
+    <div class="mini reveal">
+      <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg></div>
+      <div><h4>Slash parancsok</h4><p>Beépítettek (<code>/init</code>, <code>/clear</code>, <code>/review</code>) és sajátok is, amiket markdown fájlként írsz a <code>.claude/commands/</code> mappába.</p></div>
+    </div>
+    <div class="mini reveal">
+      <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></div>
+      <div><h4>CLAUDE.md — projekt-memória</h4><p>Egy fájl, amit Claude automatikusan beolvas. Ide írod a konvenciókat, fontos parancsokat, architektúra-jegyzeteket. A <code>/init</code> generál egy kezdőt.</p></div>
+    </div>
+    <div class="mini reveal">
+      <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+      <div><h4>Plan mode</h4><p>Nagy feladat előtt Claude előbb kutat és tervet készít, fájl-módosítás nélkül. Te jóváhagyod, és csak utána kezd dolgozni. (<code>Shift+Tab</code>)</p></div>
+    </div>
+    <div class="mini reveal">
+      <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+      <div><h4>Engedélyek (permissions)</h4><p>Te szabod meg, mit tehet rákérdezés nélkül és mihez kell jóváhagyás. Allowlistezhetsz biztonságos parancsokat, hogy ne kérdezzen feleslegesen.</p></div>
+    </div>
+    <div class="mini reveal">
+      <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+      <div><h4>IDE & app integráció</h4><p>Nemcsak terminál: van VS Code és JetBrains kiterjesztés, valamint asztali és webes app is — ugyanaz az agent, több felületen.</p></div>
+    </div>
+    <div class="mini reveal">
+      <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+      <div><h4>Háttérfeladatok & ütemezés</h4><p>Hosszan futó parancsokat háttérben futtat, és vissza tud térni rájuk. Sőt, ismétlődő feladatokat is be tudsz ütemezni neki.</p></div>
+    </div>
+  </div>
+
+  <div class="callout reveal">
+    <div class="ci"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></div>
+    <p><b>Hogyan kapcsolódik ez össze?</b> <span>A <b>CLAUDE.md</b> adja az állandó kontextust, a <b>skillek</b> a folyamat-tudást, az <b>MCP</b> a külső adatokat, a <b>hookok</b> az automata szabályokat, a <b>subagentek</b> pedig a párhuzamos munkaerőt. Együtt egy testreszabott fejlesztői környezetté állnak össze, ami pont úgy dolgozik, ahogy te szeretnéd.</span></p>
+  </div>
+</section>
+
+<!-- ========== TIPPEK ========== -->
+<section id="tippek" class="sec wrap">
+  <div class="reveal">
+    <div class="sec-tag">// Pro tippek</div>
+    <h2>Hogyan hozd ki belőle a maximumot</h2>
+    <p class="sec-sub">Amit a tapasztalt felhasználók másképp csinálnak.</p>
+  </div>
+  <div class="tips">
+    <div class="tip reveal"><b>Írj jó CLAUDE.md-t.</b> <span>Ez a legjobb befektetés: minél jobban ismeri a projekted szabályait, annál pontosabb. Kezdd a <code style="font-family:var(--mono);color:var(--accent)">/init</code>-tel.</span></div>
+    <div class="tip reveal"><b>Nagy feladat? Előbb terv.</b> <span>Plan mode-dal átnézed a tervet, mielőtt egy sor kódot is írna. Sokkal kevesebb félreértés.</span></div>
+    <div class="tip reveal"><b>Bontsd subagentekre.</b> <span>Keresés, review, kutatás — add ki külön agenteknek, hogy a fő beszélgetésed fókuszált maradjon.</span></div>
+    <div class="tip reveal"><b>Köss be MCP-t a stack-edhez.</b> <span>GitHub, adatbázis, böngésző. Minél többet „lát", annál többet old meg önállóan.</span></div>
+    <div class="tip reveal"><b>Automatizálj hookokkal.</b> <span>Formázás, lintelés, tesztfuttatás magától — egyszer beállítod, örökre megvan.</span></div>
+    <div class="tip reveal"><b>Használj <code style="font-family:var(--mono);color:var(--accent)">/clear</code>-t gyakran.</b> <span>Új, független feladatnál üríts kontextust — gyorsabb és pontosabb lesz.</span></div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div style="max-width:300px">
+        <div class="logo" style="margin-bottom:14px"><span class="logo-mark">C</span> Claude&nbsp;Code</div>
+        <p style="color:var(--text-dim);font-size:0.92rem">Egy agentic kódoló eszköz a terminálodban. Ez az oldal egy informális bemutató — a hivatalos forrásokért lásd a linkeket.</p>
+      </div>
+      <div class="foot-links">
+        <div class="foot-col">
+          <h5>Dokumentáció</h5>
+          <a href="https://docs.claude.com/en/docs/claude-code" target="_blank" rel="noopener">Claude Code docs ↗</a>
+          <a href="https://docs.claude.com/en/docs/claude-code/hooks" target="_blank" rel="noopener">Hookok ↗</a>
+          <a href="https://docs.claude.com/en/docs/claude-code/sub-agents" target="_blank" rel="noopener">Subagentek ↗</a>
+        </div>
+        <div class="foot-col">
+          <h5>Ökoszisztéma</h5>
+          <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">MCP szabvány ↗</a>
+          <a href="https://github.com/modelcontextprotocol" target="_blank" rel="noopener">MCP szerverek ↗</a>
+          <a href="https://www.anthropic.com" target="_blank" rel="noopener">Anthropic ↗</a>
+        </div>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>Bemutató / oktatási oldal · készült fiatal fejlesztőknek.</span>
+      <span>Nem hivatalos Anthropic-anyag.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ---- copy buttons ----
+  document.querySelectorAll('.copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var block = btn.closest('.code');
+      var code = block ? block.querySelector('pre code') : null;
+      if (!code) return;
+      var text = code.innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        var old = btn.textContent;
+        btn.textContent = 'Másolva ✓';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = old; btn.classList.remove('done'); }, 1600);
+      });
+    });
+  });
+
+  // ---- reveal on scroll ----
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+
+  // ---- scroll-spy: highlight active nav link ----
+  var navLinks = Array.prototype.slice.call(document.querySelectorAll('.nav-links a'));
+  var sections = navLinks.map(function (a) { return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+  var spy = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) {
+        var id = '#' + e.target.id;
+        navLinks.forEach(function (a) { a.classList.toggle('active', a.getAttribute('href') === id); });
+      }
+    });
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  sections.forEach(function (s) { spy.observe(s); });
+</script>
+</body>
+</html>
