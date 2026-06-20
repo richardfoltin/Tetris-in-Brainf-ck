@@ -302,13 +302,16 @@ def emit_print_bcd(c, base_name, n):
 
 
 def emit_render_frame(c):
-    """Draw one frame: home cursor + the 800-cell well (glyphs) + a HUD line."""
+    """Draw one frame: home cursor + the 800-cell well (glyphs) + a HUD line.
+    The HUD ends with ESC[K (clear its tail) and NO trailing newline -- a newline
+    on the last line would advance the cursor and scroll the whole board up one
+    row every frame (that scroll is what smeared the score into several copies)."""
     emit_render_well(c)                              # ESC[H + 40 rows of glyphs
     emit_str(c, "LINES ", "ansi_scratch")
     emit_print_bcd(c, "lines_bcd", 3)
     emit_str(c, "  SCORE ", "ansi_scratch")
     emit_print_bcd(c, "score_bcd", 6)
-    emit_str(c, "\r\n", "ansi_scratch")
+    emit_str(c, "\x1b[K", "ansi_scratch")           # clear HUD tail; no newline
     return c
 
 

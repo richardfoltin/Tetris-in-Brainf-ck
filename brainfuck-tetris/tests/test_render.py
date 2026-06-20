@@ -23,7 +23,8 @@ def test_render_empty_well():
     rows = out[3:].split(b"\r\n")
     assert len(rows) == H + 1          # 40 rows + trailing empty after last CRLF
     for r in rows[:H]:
-        assert r == b" " * W
+        # each row is 20 space glyphs followed by ESC[K (erase to end of line)
+        assert r == b" " * W + b"\x1b[K"
 
 
 def test_render_pieces_glyphs():

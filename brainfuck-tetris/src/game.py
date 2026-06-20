@@ -213,13 +213,15 @@ def _emit_render_cell(c, abs_cell):
 
 def emit_render_well(c):
     """Emit BF that renders the 800-cell well: ESC[H home, then 40 rows of 20
-    biased-cell glyphs, each terminated CR+LF. Static (compile-time) cell reads;
-    non-destructive."""
+    biased-cell glyphs. Each row ends with ESC[K (erase to end of line) before
+    CR+LF: the rows are only 20 cols wide, so without it anything previously
+    drawn past column 20 (e.g. a scrolled HUD's trailing digits) would ghost.
+    Static (compile-time) cell reads; non-destructive."""
     emit_str(c, "\x1b[H", "ansi_scratch")
     for y in range(H):
         for x in range(W):
             _emit_render_cell(c, cell(c, x, y))
-        emit_str(c, "\r\n", "ansi_scratch")
+        emit_str(c, "\x1b[K\r\n", "ansi_scratch")
     return c
 
 

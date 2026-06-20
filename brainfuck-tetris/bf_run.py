@@ -253,6 +253,48 @@ def _restore_console(saved):  # pragma: no cover
     ctypes.windll.kernel32.SetConsoleMode(h, original)
 
 
+# Console rows the board needs: 40 well rows + HUD + a spare so the ESC[H redraw
+# never pushes the bottom line off-screen (scrolling is the #1 flicker source for
+# a board taller than the window).
+CONSOLE_COLS = 40
+CONSOLE_ROWS = 44
+
+
+def _fit_console(cols=CONSOLE_COLS, rows=CONSOLE_ROWS):  # pragma: no cover
+    """Best-effort: make the console buffer == window == cols x rows. A screen
+    buffer TALLER than the window is the subtle flicker/ghost source: ESC[H homes
+    to the buffer origin, which after any scroll sits above the viewport, so the
+    redraw lands off-screen and stale rows (e.g. a scrolled HUD) linger. Setting
+    buffer == window kills the scrollback so home is always the visible top-left.
+    Falls back to `mode con`. Done before VT-enable (mode con resets the mode)."""
+    import ctypes
+
+    class _COORD(ctypes.Structure):
+        _fields_ = [("X", ctypes.c_short), ("Y", ctypes.c_short)]
+
+    class _RECT(ctypes.Structure):
+        _fields_ = [("Left", ctypes.c_short), ("Top", ctypes.c_short),
+                    ("Right", ctypes.c_short), ("Bottom", ctypes.c_short)]
+
+    try:
+        k = ctypes.windll.kernel32
+        h = k.GetStdHandle(-11)
+        k.GetLargestConsoleWindowSize.restype = _COORD
+        largest = k.GetLargestConsoleWindowSize(h)
+        if largest.X > 0 and largest.Y > 0:
+            cols = min(cols, largest.X)
+            rows = min(rows, largest.Y)
+        k.SetConsoleWindowInfo(h, True, ctypes.byref(_RECT(0, 0, 0, 0)))   # window -> 1x1
+        k.SetConsoleScreenBufferSize(h, _COORD(cols, rows))                # buffer
+        k.SetConsoleWindowInfo(h, True, ctypes.byref(_RECT(0, 0, cols - 1, rows - 1)))
+    except Exception:
+        try:
+            import os
+            os.system("mode con: cols=%d lines=%d" % (cols, rows))
+        except Exception:
+            pass
+
+
 def main(argv=None):  # pragma: no cover - integration path
     argv = argv if argv is not None else sys.argv[1:]
     if not argv:
@@ -267,15 +309,31 @@ def main(argv=None):  # pragma: no cover - integration path
     import time
     import msvcrt
 
+    _fit_console()                 # size the window to the board (anti-scroll)
     saved = _enable_vt_windows()
-    sys.stdout.write("\x1b[?25l")  # hide cursor
+    sys.stdout.write("\x1b[2J\x1b[?25l")  # clear + hide cursor
     sys.stdout.flush()
 
     period = 1.0 / 30.0
     state = {"next_tick": time.perf_counter()}
+    frame = bytearray()            # accumulate a whole frame; paint it atomically
+
+    def flush_frame():
+        # One write + one flush per frame (NOT per byte/line). Wrapped in
+        # synchronized-output (ESC[?2026h/l) so capable terminals swap the frame
+        # in a single repaint -> no tearing; older consoles ignore the markers.
+        if frame:
+            buf = sys.stdout.buffer
+            buf.write(b"\x1b[?2026h")
+            buf.write(bytes(frame))
+            buf.write(b"\x1b[?2026l")
+            buf.flush()
+            frame.clear()
 
     def read_byte():
-        # frame pacing lives here: one ',' poll per frame
+        # one ',' per frame == the frame boundary: paint the frame just built,
+        # then pace to the next tick, then sample the keyboard.
+        flush_frame()
         now = time.perf_counter()
         time.sleep(sleep_for(state["next_tick"], now))
         state["next_tick"] = next_deadline(state["next_tick"], period)
@@ -283,10 +341,7 @@ def main(argv=None):  # pragma: no cover - integration path
         return translate_key(getch)
 
     def write_byte(v):
-        # immediate relay; a later phase buffers a whole frame per write+flush
-        sys.stdout.buffer.write(bytes((v,)))
-        if v == 0x0A:  # newline -> flush the line
-            sys.stdout.buffer.flush()
+        frame.append(v)            # buffered; flushed once per frame in read_byte
 
     vm = BFVM(code)
     try:
@@ -294,6 +349,7 @@ def main(argv=None):  # pragma: no cover - integration path
     except KeyboardInterrupt:
         pass
     finally:
+        flush_frame()              # paint the finale
         sys.stdout.write("\x1b[?25h")  # show cursor
         sys.stdout.flush()
         _restore_console(saved)
