@@ -10,6 +10,10 @@ venv/
 build/
 dist/
 
+# Generated Brainfuck artifacts (reproducible via `python build.py`)
+brainfuck-tetris/tetris.bf
+brainfuck-tetris/tests/memory_map.txt
+
 # OS / editor
 Thumbs.db
 Desktop.ini
